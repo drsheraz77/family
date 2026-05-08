@@ -1,0 +1,6 @@
+{
+  "name": "صحت مند گھر - بچوں میں وقفہ",
+  "description": "آپ کا خاندان – آپ کا فیصلہ۔ ایک آف لائن اردو چیٹ بوٹ جو آپ کو بچوں کی پیدائش میں وقفہ اور صحت کے بارے میں معلومات فراہم کرتا ہے۔",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["Urdu language support", "Offline-first knowledge base", "Interactive health education"]
+}
