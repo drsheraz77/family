@@ -402,7 +402,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.1.0 (Deep Refresh)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.3.0 (Final Content Review)</p>
               </div>
             </motion.div>
           </>
@@ -434,7 +434,7 @@ export default function App() {
             <div className="space-y-2">
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white">صحت مند گھر</h1>
             <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.1.0 • Religious Content Verified</p>
+            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.3.0 • Islamic & Medical Context Applied</p>
           </div>
             <div className="pt-4 flex flex-col items-center gap-2">
               <button 
