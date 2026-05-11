@@ -96,6 +96,8 @@ interface Message {
 
 const INITIAL_NODE = 'start';
 
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentNodeId, setCurrentNodeId] = useState<string>(INITIAL_NODE);
@@ -289,18 +291,16 @@ export default function App() {
 
     setIsTyping(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      
+      const modelName = "gemini-flash-latest"; // Following skill recommendations
       const prompt = `
         آپ بچوں میں وقفہ (Child Spacing) کے ماہر ہیں۔ 
         پاکستان کے مخصوص سماجی اور طبی تناظر میں مختصر اور جامع جواب اردو میں دیں۔ 
-        اگر سوال بچوں میں وقفہ سے متعلق نہ ہو تو معذرت کریں۔
         صارف کا سوال: ${userText}
       `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt
+      const response = await genAI.models.generateContent({
+        model: modelName,
+        contents: [{ parts: [{ text: prompt }] }]
       });
       
       const text = response.text || 'معذرت، میں ابھی جواب نہیں دے پا رہا۔';
@@ -309,7 +309,10 @@ export default function App() {
       console.error('AI Error:', error);
       let errorMessage = 'معذرت، ابھی میں جواب نہیں دے پا رہا۔ براہ کرم تھوڑی دیر بعد کوشش کریں۔';
       const errStr = String(error);
-      if (errStr.includes('fetch') || !window.navigator.onLine) {
+      
+      if (errStr.includes('403') || errStr.includes('API key')) {
+        errorMessage = 'اے آئی سروس بند ہے۔ براہ کرم بعد میں چیک کریں۔';
+      } else if (errStr.includes('fetch') || !window.navigator.onLine) {
         errorMessage = 'انٹرنیٹ چیک کریں اور دوبارہ کوشش کریں۔';
       }
       addBotMessage(errorMessage);
@@ -402,7 +405,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.3.0 (Final Content Review)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.4.0 (AI Response Fix)</p>
               </div>
             </motion.div>
           </>
@@ -434,7 +437,7 @@ export default function App() {
             <div className="space-y-2">
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white">صحت مند گھر</h1>
             <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.3.0 • Islamic & Medical Context Applied</p>
+            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.4.0 • Bot Intelligence Refresh</p>
           </div>
             <div className="pt-4 flex flex-col items-center gap-2">
               <button 
