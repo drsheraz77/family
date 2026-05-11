@@ -18,7 +18,8 @@ import {
   MicOff,
   Menu,
   X,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 
 // Speech Utility
@@ -405,7 +406,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.6.0 (Chatbot Fixed)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.7.0 (Navigation Update)</p>
               </div>
             </motion.div>
           </>
@@ -414,232 +415,268 @@ export default function App() {
 
       {/* Main Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        {/* Persistent Header */}
-        <header className="bg-[#1a103d] text-white p-10 md:p-16 shadow-2xl relative overflow-hidden text-center">
+        {/* Persistent Header - Becomes compact on detail views */}
+        <header className={cn(
+          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-500",
+          activeTopicId ? "p-4 md:p-6" : "p-10 md:p-16 text-center"
+        )}>
           <button 
             onClick={() => setIsMenuOpen(true)}
-            className="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 rounded-2xl backdrop-blur-md z-20 transition-all active:scale-90"
+            className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md z-20 transition-all active:scale-90"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5 md:w-6 md:h-6" />
           </button>
+          
           <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white rounded-full blur-3xl animate-pulse" />
+            <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white rounded-full blur-3xl" />
             <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-indigo-500 rounded-full blur-3xl" />
           </div>
-          <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center gap-6">
+
+          <div className={cn(
+            "max-w-4xl mx-auto relative z-10 flex flex-col items-center gap-6",
+            activeTopicId && "flex-row items-center justify-start gap-4"
+          )}>
             <motion.div 
+              layout
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white/10 p-5 rounded-[40px] backdrop-blur-md border border-white/20 shadow-2xl"
+              className={cn(
+                "bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 shadow-2xl",
+                !activeTopicId && "p-5 rounded-[40px]"
+              )}
             >
-              <Heart className="w-12 h-12 text-white fill-white/80" />
+              <Heart className={cn("text-white fill-white/80", activeTopicId ? "w-6 h-6" : "w-12 h-12")} />
             </motion.div>
-            <div className="space-y-2">
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white">صحت مند گھر</h1>
-            <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.6.0 • AI Intelligence Stabilized</p>
-          </div>
-            <div className="pt-4 flex flex-col items-center gap-2">
-              <button 
-                onClick={testVoice}
-                className="group relative inline-flex items-center gap-3 px-10 py-5 bg-white text-teal-900 rounded-[24px] font-bold text-2xl shadow-2xl hover:bg-teal-50 transition-all active:scale-95"
-              >
-                <Volume2 className="w-7 h-7" />
-                ٹیسٹ آواز (مفت) 🔊
-              </button>
-              <span className="text-[10px] text-teal-200 font-sans uppercase font-black tracking-widest mt-2">Test Urdu Voice System</span>
+            
+            <div className={cn("space-y-1", !activeTopicId && "space-y-2")}>
+              <h1 className={cn("font-black tracking-tighter text-white", activeTopicId ? "text-xl md:text-2xl" : "text-4xl md:text-6xl")}>صحت مند گھر</h1>
+              {!activeTopicId && (
+                <>
+                  <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.7.0 • Improved Topic Navigation</p>
+                </>
+              )}
             </div>
+
+            {!activeTopicId && (
+              <div className="pt-4 flex flex-col items-center gap-2">
+                <button 
+                  onClick={testVoice}
+                  className="group relative inline-flex items-center gap-3 px-10 py-5 bg-white text-teal-900 rounded-[24px] font-bold text-2xl shadow-2xl hover:bg-teal-50 transition-all active:scale-95"
+                >
+                  <Volume2 className="w-7 h-7" />
+                  ٹیسٹ آواز (مفت) 🔊
+                </button>
+                <span className="text-[10px] text-teal-200 font-sans uppercase font-black tracking-widest mt-2">Test Urdu Voice System</span>
+              </div>
+            )}
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto w-full px-4 py-12 pb-32">
+        <main className="max-w-4xl mx-auto w-full px-4 py-8 pb-32">
           {activeTab === 'topics' ? (
-            <section id="topics" className="space-y-10 animate-in fade-in duration-500">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <h3 className="font-black text-4xl text-slate-800 tracking-tight">صحت کے اہم موضوعات</h3>
-                <div className="h-2 w-20 bg-teal-600 rounded-full"></div>
-                <p className="text-slate-500 text-xl font-medium">نیچے دیے گئے کسی بھی کارڈ پر کلک کر کے معلومات حاصل کریں</p>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[
-                  { id: 'healthy_comparison', label: 'وقفہ کے فوائد (موازنہ)', icon: '🌟', color: 'bg-blue-600', sub: 'خاندان کی خوشحالی' },
-                  { id: 'ai_chat_link', label: 'اے آئی مشیر سے پوچھیں', icon: '🤖', color: 'bg-indigo-600', sub: 'فوری سوال و جواب', special: true },
-                  { id: 'methods', label: 'وقفہ کے طریقے', icon: 'pill', color: 'bg-teal-600', sub: 'محفوظ اور آسان طریقے' },
-                  { id: 'religion', label: 'اسلام اور وقفہ', icon: '🌙', color: 'bg-emerald-600', sub: 'شرعی رہنمائی' },
-                  { id: 'fp_services', label: 'وقفہ کی سروسز (سہولیات)', icon: '🏥', color: 'bg-cyan-600', sub: 'اعظم بستی اور مٹیاری' },
-                  { id: 'myths', label: 'حقائق بمقابلہ غلط فہمیاں', icon: '🔍', color: 'bg-orange-600', sub: 'سچائی جانیے' },
-                  { id: 'mens_role', label: 'خاندان کی خوشی اور مرد', icon: '🤝', color: 'bg-cyan-600', sub: 'ذمہ دارانہ کردار' },
-                  { id: 'faq', label: 'عام پوچھے جانے والے سوالات', icon: '❓', color: 'bg-purple-600', sub: 'آپ کے سوالات' }
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      if (item.id === 'ai_chat_link') {
-                        setActiveTab('chat');
-                      } else {
-                        handleTopicClick(item.id);
-                      }
-                    }}
-                    className={cn(
-                      "flex flex-col p-8 bg-white rounded-[40px] border-2 border-slate-100 shadow-sm text-right transition-all group relative hover:shadow-xl hover:border-slate-200 active:scale-95",
-                      item.id === 'ai_chat_link' ? "border-indigo-100 bg-indigo-50/30" : "",
-                      activeTopicId === item.id ? "ring-4 ring-teal-500 border-teal-500" : ""
-                    )}
-                  >
-                    <div className={cn(
-                      "w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl mb-6 shadow-lg group-hover:scale-110 transition-transform",
-                      item.id === 'ai_chat_link' ? "bg-indigo-600 text-white" : "bg-white border-2 border-slate-50"
-                    )}>
-                      {item.id === 'methods' ? '💊' : item.icon}
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className={cn(
-                        "font-black text-2xl text-slate-800 leading-tight",
-                        item.id === 'ai_chat_link' ? "text-indigo-900" : "group-hover:text-teal-900"
-                      )}>{item.label}</h4>
-                      <p className={cn(
-                        "text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest",
-                        item.id === 'ai_chat_link' ? "text-indigo-400 opacity-100" : "text-slate-400"
-                      )}>{item.sub}</p>
-                    </div>
-                    <div className="absolute top-8 left-8">
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                        item.id === 'ai_chat_link' ? "bg-indigo-100 text-indigo-600" : (activeTopicId === item.id ? "bg-teal-600 text-white" : "bg-slate-50 text-slate-300")
-                      )}>
-                        {item.id === 'ai_chat_link' ? <MessageSquare className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <AnimatePresence mode="wait">
+              {!activeTopicId ? (
+                <motion.section 
+                  key="topic-list"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-10"
+                >
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <h3 className="font-black text-4xl text-slate-800 tracking-tight">صحت کے اہم موضوعات</h3>
+                    <div className="h-2 w-20 bg-teal-600 rounded-full"></div>
+                    <p className="text-slate-500 text-xl font-medium">نیچے دیے گئے کسی بھی کارڈ پر کلک کر کے معلومات حاصل کریں</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                      { id: 'healthy_comparison', label: 'وقفہ کے فوائد (موازنہ)', icon: '🌟', color: 'bg-blue-600', sub: 'خاندان کی خوشحالی' },
+                      { id: 'ai_chat_link', label: 'اے آئی مشیر سے پوچھیں', icon: '🤖', color: 'bg-indigo-600', sub: 'فوری سوال و جواب', special: true },
+                      { id: 'methods', label: 'وقفہ کے طریقے', icon: 'pill', color: 'bg-teal-600', sub: 'محفوظ اور آسان طریقے' },
+                      { id: 'religion', label: 'اسلام اور وقفہ', icon: '🌙', color: 'bg-emerald-600', sub: 'شرعی رہنمائی' },
+                      { id: 'fp_services', label: 'وقفہ کی سروسز (سہولیات)', icon: '🏥', color: 'bg-cyan-600', sub: 'اعظم بستی اور مٹیاری' },
+                      { id: 'myths', label: 'حقائق بمقابلہ غلط فہمیاں', icon: '🔍', color: 'bg-orange-600', sub: 'سچائی جانیے' },
+                      { id: 'mens_role', label: 'خاندان کی خوشی اور مرد', icon: '🤝', color: 'bg-cyan-600', sub: 'ذمہ دارانہ کردار' },
+                      { id: 'faq', label: 'عام پوچھے جانے والے سوالات', icon: '❓', color: 'bg-purple-600', sub: 'آپ کے سوالات' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          if (item.id === 'ai_chat_link') {
+                            setActiveTab('chat');
+                          } else {
+                            handleTopicClick(item.id);
+                          }
+                        }}
+                        className={cn(
+                          "flex flex-col p-8 bg-white rounded-[40px] border-2 border-slate-100 shadow-sm text-right transition-all group relative hover:shadow-xl hover:border-slate-200 active:scale-95",
+                          item.id === 'ai_chat_link' ? "border-indigo-100 bg-indigo-50/30" : "",
+                          activeTopicId === item.id ? "ring-4 ring-teal-500 border-teal-500" : ""
+                        )}
+                      >
+                        <div className={cn(
+                          "w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl mb-6 shadow-lg group-hover:scale-110 transition-transform",
+                          item.id === 'ai_chat_link' ? "bg-indigo-600 text-white" : "bg-white border-2 border-slate-50"
+                        )}>
+                          {item.id === 'methods' ? '💊' : item.icon}
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className={cn(
+                            "font-black text-2xl text-slate-800 leading-tight",
+                            item.id === 'ai_chat_link' ? "text-indigo-900" : "group-hover:text-teal-900"
+                          )}>{item.label}</h4>
+                          <p className={cn(
+                            "text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest",
+                            item.id === 'ai_chat_link' ? "text-indigo-400 opacity-100" : "text-slate-400"
+                          )}>{item.sub}</p>
+                        </div>
+                        <div className="absolute top-8 left-8">
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                            item.id === 'ai_chat_link' ? "bg-indigo-100 text-indigo-600" : (activeTopicId === item.id ? "bg-teal-600 text-white" : "bg-slate-50 text-slate-300")
+                          )}>
+                            {item.id === 'ai_chat_link' ? <MessageSquare className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <footer className="bg-slate-50 border-t border-slate-200 py-16 px-6 text-center space-y-12 rounded-[40px] mt-12">
+                    <div className="max-w-3xl mx-auto space-y-12">
+                      <div className="space-y-6">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-200">
+                          <span className="w-3 h-3 bg-teal-500 rounded-full"></span>
+                          <h4 className="font-black text-slate-800 text-lg italic">آف لائن موڈ (Offline Mode)</h4>
+                        </div>
+                        <p className="text-slate-600 leading-relaxed text-sm text-right">
+                          یہ ایپ کی آواز (TTS) آپ کے موبائل کے اندر لگے اردو TTS انجن سے آتی ہے – انٹرنیٹ سے نہیں۔ Samsung اور Google TTS دونوں سپورٹڈ ہیں۔
+                        </p>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-100 p-6 rounded-3xl text-[12px] text-orange-900 leading-relaxed shadow-sm">
+                        <strong>ضروری نوٹ:</strong> یہ پلیٹ فارم صرف بچوں میں وقفہ کی بنیادی معلومات فراہم کرتا ہے۔ کوئی بھی طریقہ شروع کرنے سے پہلے ہمیشہ ڈاکٹر یا مستند لیڈی ہیلتھ ورکر سے رجوع کریں۔
                       </div>
                     </div>
-                  </button>
-                ))}
-              </div>
+                  </footer>
+                </motion.section>
+              ) : (
+                <motion.div
+                  key="topic-detail"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="bg-white border-4 border-teal-600 rounded-[48px] p-6 md:p-10 shadow-2xl relative overflow-hidden"
+                >
+                  <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
+                    <button 
+                      onClick={() => { setActiveTopicId(null); setBreadcrumb(['start']); }}
+                      className="flex items-center gap-3 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-2xl transition-all active:scale-90"
+                    >
+                      <ArrowLeft className="w-6 h-6" />
+                      <span>واپس جائیں</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => { setActiveTopicId(null); setBreadcrumb(['start']); }}
+                      className="p-3 bg-slate-50 rounded-full hover:bg-slate-100 transition-colors"
+                    >
+                      <X className="w-6 h-6 text-slate-400" />
+                    </button>
+                  </div>
 
-              {/* Active Topic Detail View */}
-              <AnimatePresence mode="wait">
-                {activeTopicId && (
-                  <motion.div
-                    key={activeTopicId}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white border-4 border-teal-600 rounded-[48px] p-10 shadow-2xl relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 p-6 flex gap-2">
-                       <button 
-                        onClick={() => { setActiveTopicId(null); setBreadcrumb(['start']); }}
-                        className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"
-                       >
-                         <X className="w-5 h-5 text-slate-500" />
-                       </button>
-                    </div>
-                    <div className="space-y-8">
-                      {/* Breadcrumbs */}
-                      <nav className="flex items-center gap-2 text-sm font-bold text-slate-400 overflow-x-auto no-scrollbar pb-2">
-                        {breadcrumb.map((id, index) => (
-                          <React.Fragment key={id}>
-                            <button
-                              onClick={() => handleTopicClick(id, true)}
-                              className={cn(
-                                "whitespace-nowrap transition-colors",
-                                index === breadcrumb.length - 1 ? "text-teal-600 font-black" : "hover:text-slate-600"
-                              )}
-                            >
-                              {getTopicTitle(id)}
-                            </button>
-                            {index < breadcrumb.length - 1 && <span className="text-slate-300">/</span>}
-                          </React.Fragment>
-                        ))}
-                      </nav>
+                  <div className="space-y-8">
+                    {/* Breadcrumbs */}
+                    <nav className="flex items-center gap-2 text-sm font-bold text-slate-400 overflow-x-auto no-scrollbar pb-2">
+                      {breadcrumb.map((id, index) => (
+                        <React.Fragment key={id}>
+                          <button
+                            onClick={() => handleTopicClick(id, true)}
+                            className={cn(
+                              "whitespace-nowrap transition-colors",
+                              index === breadcrumb.length - 1 ? "text-teal-600 font-black" : "hover:text-slate-600"
+                            )}
+                          >
+                            {getTopicTitle(id)}
+                          </button>
+                          {index < breadcrumb.length - 1 && <span className="text-slate-300">/</span>}
+                        </React.Fragment>
+                      ))}
+                    </nav>
 
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-3xl">
                           📖
                         </div>
-                        <button 
-                          onClick={() => toggleSpeech(activeTopicId, CHAT_TREE[activeTopicId].text)}
-                          className={cn(
-                            "flex items-center gap-3 px-6 py-3 rounded-full transition-all font-bold",
-                            speakingMessageId === activeTopicId ? "bg-teal-600 text-white shadow-lg animate-pulse" : "bg-teal-100 text-teal-700 hover:bg-teal-200"
-                          )}
-                        >
-                          <Volume2 className="w-5 h-5" />
-                          <span>{speakingMessageId === activeTopicId ? 'آواز چل رہی ہے...' : 'آواز میں سنیں'}</span>
-                        </button>
+                        <h2 className="text-3xl font-black text-slate-800">{getTopicTitle(activeTopicId)}</h2>
                       </div>
+                      
+                      <button 
+                        onClick={() => toggleSpeech(activeTopicId, CHAT_TREE[activeTopicId].text)}
+                        className={cn(
+                          "flex items-center justify-center gap-3 px-6 py-4 rounded-3xl transition-all font-black text-lg",
+                          speakingMessageId === activeTopicId ? "bg-teal-600 text-white shadow-lg animate-pulse" : "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                        )}
+                      >
+                        <Volume2 className="w-6 h-6" />
+                        <span>{speakingMessageId === activeTopicId ? 'آواز چل رہی ہے...' : 'آواز میں سنیں'}</span>
+                      </button>
+                    </div>
 
-                      {CHAT_TREE[activeTopicId].image && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="w-full rounded-[32px] overflow-hidden border-4 border-slate-50 shadow-lg"
-                        >
-                          <img 
-                            src={CHAT_TREE[activeTopicId].image} 
-                            alt={CHAT_TREE[activeTopicId].imageAlt || "Topic Visual"} 
-                            className="w-full h-auto object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        </motion.div>
-                      )}
+                    {CHAT_TREE[activeTopicId].image && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full rounded-[32px] overflow-hidden border-4 border-slate-50 shadow-lg"
+                      >
+                        <img 
+                          src={CHAT_TREE[activeTopicId].image} 
+                          alt={CHAT_TREE[activeTopicId].imageAlt || "Topic Visual"} 
+                          className="w-full h-auto object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </motion.div>
+                    )}
 
-                      <div className="text-2xl md:text-3xl leading-relaxed text-slate-800 font-bold whitespace-pre-line border-r-8 border-teal-600 pr-6">
-                        {CHAT_TREE[activeTopicId].text}
-                      </div>
+                    <div className="text-2xl md:text-3xl leading-relaxed text-slate-800 font-bold whitespace-pre-line border-r-8 border-teal-600 pr-6">
+                      {CHAT_TREE[activeTopicId].text}
+                    </div>
 
-                      {/* Sub-topics / Related Links */}
-                      {CHAT_TREE[activeTopicId].options && CHAT_TREE[activeTopicId].options.length > 0 && (
-                        <div className="pt-10 border-t border-slate-100 space-y-6">
-                          <p className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">مزید متعلقہ معلومات:</p>
-                          <div className="flex flex-wrap gap-4">
-                            {CHAT_TREE[activeTopicId].options.map((opt) => (
-                              <button
-                                key={opt.id}
-                                onClick={() => {
-                                  if (opt.nextId === 'start') {
-                                    setActiveTopicId(null);
-                                  } else if (opt.nextId === 'ai_chat') {
-                                    setActiveTab('chat');
-                                    setActiveTopicId(null);
-                                  } else if (opt.nextId) {
-                                    handleTopicClick(opt.nextId);
-                                  }
-                                }}
-                                className="px-8 py-5 bg-slate-50 text-teal-800 rounded-[28px] font-black border-2 border-slate-100 hover:bg-teal-50 hover:border-teal-200 transition-all active:scale-95 text-xl shadow-sm flex items-center gap-3"
-                              >
-                                <span>{opt.label}</span>
-                                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                  <Volume2 className="w-4 h-4 text-teal-400" />
-                                </div>
-                              </button>
-                            ))}
-                          </div>
+                    {/* Sub-topics / Related Links */}
+                    {CHAT_TREE[activeTopicId].options && CHAT_TREE[activeTopicId].options.length > 0 && (
+                      <div className="pt-10 border-t border-slate-100 space-y-6">
+                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest px-2">مزید متعلقہ معلومات:</p>
+                        <div className="flex flex-wrap gap-4">
+                          {CHAT_TREE[activeTopicId].options.map((opt) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => {
+                                if (opt.nextId === 'start') {
+                                  setActiveTopicId(null);
+                                } else if (opt.nextId === 'ai_chat') {
+                                  setActiveTab('chat');
+                                  setActiveTopicId(null);
+                                } else if (opt.nextId) {
+                                  handleTopicClick(opt.nextId);
+                                }
+                              }}
+                              className="px-8 py-5 bg-slate-50 text-teal-800 rounded-[28px] font-black border-2 border-slate-100 hover:bg-teal-50 hover:border-teal-200 transition-all active:scale-95 text-xl shadow-sm flex items-center gap-3"
+                            >
+                              <span>{opt.label}</span>
+                              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                <Volume2 className="w-4 h-4 text-teal-400" />
+                              </div>
+                            </button>
+                          ))}
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Footer inside topics for long scroll */}
-              <footer className="bg-slate-50 border-t border-slate-200 py-16 px-6 text-center space-y-12 rounded-[40px]">
-                <div className="max-w-3xl mx-auto space-y-12">
-                  {/* Offline Mode Info */}
-                  <div className="space-y-6">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-200">
-                      <span className="w-3 h-3 bg-teal-500 rounded-full"></span>
-                      <h4 className="font-black text-slate-800 text-lg italic">آف لائن موڈ (Offline Mode)</h4>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed text-sm text-right">
-                      یہ ایپ کی آواز (TTS) آپ کے موبائل کے اندر لگے اردو TTS انجن سے آتی ہے – انٹرنیٹ سے نہیں۔ Samsung اور Google TTS دونوں سپورٹڈ ہیں۔
-                    </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-orange-50 border border-orange-100 p-6 rounded-3xl text-[12px] text-orange-900 leading-relaxed shadow-sm">
-                    <strong>ضروری نوٹ:</strong> یہ پلیٹ فارم صرف بچوں میں وقفہ کی بنیادی معلومات فراہم کرتا ہے۔ کوئی بھی طریقہ شروع کرنے سے پہلے ہمیشہ ڈاکٹر یا مستند لیڈی ہیلتھ ورکر سے رجوع کریں۔
-                  </div>
-                </div>
-              </footer>
-            </section>
+                </motion.div>
+              )}
+            </AnimatePresence>
           ) : (
             <section id="chat" className="space-y-12 animate-in fade-in duration-500 min-h-[60vh] pb-60">
               <div className="flex flex-col items-center text-center space-y-4">
