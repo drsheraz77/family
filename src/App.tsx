@@ -291,7 +291,7 @@ export default function App() {
 
     setIsTyping(true);
     try {
-      const modelName = "gemini-flash-latest"; // Following skill recommendations
+      const modelName = "gemini-3-flash-preview"; 
       const prompt = `
         آپ بچوں میں وقفہ (Child Spacing) کے ماہر ہیں۔ 
         پاکستان کے مخصوص سماجی اور طبی تناظر میں مختصر اور جامع جواب اردو میں دیں۔ 
@@ -300,7 +300,7 @@ export default function App() {
 
       const response = await genAI.models.generateContent({
         model: modelName,
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: prompt
       });
       
       const text = response.text || 'معذرت، میں ابھی جواب نہیں دے پا رہا۔';
@@ -405,7 +405,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.4.0 (AI Response Fix)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.6.0 (Chatbot Fixed)</p>
               </div>
             </motion.div>
           </>
@@ -437,7 +437,7 @@ export default function App() {
             <div className="space-y-2">
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white">صحت مند گھر</h1>
             <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.4.0 • Bot Intelligence Refresh</p>
+            <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.6.0 • AI Intelligence Stabilized</p>
           </div>
             <div className="pt-4 flex flex-col items-center gap-2">
               <button 
@@ -464,7 +464,8 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                   { id: 'healthy_comparison', label: 'وقفہ کے فوائد (موازنہ)', icon: '🌟', color: 'bg-blue-600', sub: 'خاندان کی خوشحالی' },
-                  { id: 'methods', label: 'وقفہ کے طریقے', icon: '💊', color: 'bg-teal-600', sub: 'محفوظ اور آسان طریقے' },
+                  { id: 'ai_chat_link', label: 'اے آئی مشیر سے پوچھیں', icon: '🤖', color: 'bg-indigo-600', sub: 'فوری سوال و جواب', special: true },
+                  { id: 'methods', label: 'وقفہ کے طریقے', icon: 'pill', color: 'bg-teal-600', sub: 'محفوظ اور آسان طریقے' },
                   { id: 'religion', label: 'اسلام اور وقفہ', icon: '🌙', color: 'bg-emerald-600', sub: 'شرعی رہنمائی' },
                   { id: 'fp_services', label: 'وقفہ کی سروسز (سہولیات)', icon: '🏥', color: 'bg-cyan-600', sub: 'اعظم بستی اور مٹیاری' },
                   { id: 'myths', label: 'حقائق بمقابلہ غلط فہمیاں', icon: '🔍', color: 'bg-orange-600', sub: 'سچائی جانیے' },
@@ -473,28 +474,41 @@ export default function App() {
                 ].map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => handleTopicClick(item.id)}
+                    onClick={() => {
+                      if (item.id === 'ai_chat_link') {
+                        setActiveTab('chat');
+                      } else {
+                        handleTopicClick(item.id);
+                      }
+                    }}
                     className={cn(
                       "flex flex-col p-8 bg-white rounded-[40px] border-2 border-slate-100 shadow-sm text-right transition-all group relative hover:shadow-xl hover:border-slate-200 active:scale-95",
+                      item.id === 'ai_chat_link' ? "border-indigo-100 bg-indigo-50/30" : "",
                       activeTopicId === item.id ? "ring-4 ring-teal-500 border-teal-500" : ""
                     )}
                   >
                     <div className={cn(
                       "w-20 h-20 rounded-[28px] flex items-center justify-center text-4xl mb-6 shadow-lg group-hover:scale-110 transition-transform",
-                      "bg-white border-2 border-slate-50"
+                      item.id === 'ai_chat_link' ? "bg-indigo-600 text-white" : "bg-white border-2 border-slate-50"
                     )}>
-                      {item.icon}
+                      {item.id === 'methods' ? '💊' : item.icon}
                     </div>
                     <div className="space-y-2">
-                      <h4 className="font-black text-2xl text-slate-800 group-hover:text-teal-900 leading-tight">{item.label}</h4>
-                      <p className="text-slate-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">{item.sub}</p>
+                      <h4 className={cn(
+                        "font-black text-2xl text-slate-800 leading-tight",
+                        item.id === 'ai_chat_link' ? "text-indigo-900" : "group-hover:text-teal-900"
+                      )}>{item.label}</h4>
+                      <p className={cn(
+                        "text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest",
+                        item.id === 'ai_chat_link' ? "text-indigo-400 opacity-100" : "text-slate-400"
+                      )}>{item.sub}</p>
                     </div>
                     <div className="absolute top-8 left-8">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                        activeTopicId === item.id ? "bg-teal-600 text-white" : "bg-slate-50 text-slate-300"
+                        item.id === 'ai_chat_link' ? "bg-indigo-100 text-indigo-600" : (activeTopicId === item.id ? "bg-teal-600 text-white" : "bg-slate-50 text-slate-300")
                       )}>
-                        <Volume2 className="w-4 h-4" />
+                        {item.id === 'ai_chat_link' ? <MessageSquare className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                       </div>
                     </div>
                   </button>
@@ -704,6 +718,19 @@ export default function App() {
 
       {/* Floating Smart Input Dock (Only in Chat Tab) */}
       <AnimatePresence>
+        {activeTab === 'topics' && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            onClick={() => setActiveTab('chat')}
+            className="fixed bottom-24 right-6 w-20 h-20 bg-indigo-600 text-white rounded-full shadow-2xl z-[55] flex flex-col items-center justify-center gap-1 active:scale-90 transition-all border-4 border-white/20 backdrop-blur-sm"
+          >
+            <Bot className="w-8 h-8" />
+            <span className="text-[10px] font-black uppercase">Ask AI</span>
+          </motion.button>
+        )}
+
         {activeTab === 'chat' && (
           <motion.div 
             initial={{ y: 100, opacity: 0 }}
