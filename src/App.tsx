@@ -98,7 +98,7 @@ interface SpeechRecognition extends EventTarget {
 declare var webkitSpeechRecognition: {
   new (): SpeechRecognition;
 };
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { CHAT_TREE, ChatNode } from './constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -138,6 +138,8 @@ export default function App() {
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
   const [isAutoVoiceEnabled, setIsAutoVoiceEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const isProcessingVoiceRef = useRef(false);
 
   const toggleSpeech = (id: string, text: string) => {
     if (speakingMessageId === id) {
@@ -186,7 +188,13 @@ export default function App() {
     }
   };
   const startListening = () => {
-    if (isListening) return;
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -197,14 +205,18 @@ export default function App() {
 
     try {
       const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
       recognition.lang = 'ur-PK';
       recognition.interimResults = true;
       recognition.continuous = false;
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsListening(true);
+        isProcessingVoiceRef.current = false;
         setShowVoiceConfirm(false);
         setInterimTranscript('');
+        console.log('Speech recognition started');
       };
 
       recognition.onresult = (event: any) => {
@@ -219,12 +231,21 @@ export default function App() {
           }
         }
 
-        if (finalTranscript) {
+        if (finalTranscript && !isProcessingVoiceRef.current) {
+          isProcessingVoiceRef.current = true;
+          console.log('Final Transcript detected:', finalTranscript);
           setInputValue(finalTranscript);
           setInterimTranscript('');
-          // Automatically send the message when speech is final
-          sendMessage(finalTranscript);
-        } else {
+          
+          // Small delay to ensure state is synchronized and user sees the text
+          setTimeout(() => {
+            sendMessage(finalTranscript);
+          }, 500);
+
+          if (recognitionRef.current) {
+            recognitionRef.current.stop();
+          }
+        } else if (!isProcessingVoiceRef.current) {
           setInterimTranscript(interim);
         }
       };
@@ -235,16 +256,20 @@ export default function App() {
         setInterimTranscript('');
         
         if (event.error === 'not-allowed') {
-          alert('براہ کرم مائیکروفون کے استعمال کی اجازت دیں۔');
-        } else if (event.error === 'no-speech' || event.error === 'aborted') {
-          // Normal cases
+          alert('براہ کرم مائیکروفون کے استعمال کی اجازت دیں۔ آپ کی آواز نہیں سنی جا رہی۔');
+        } else if (event.error === 'no-speech') {
+          console.log('No speech detected');
+        } else if (event.error === 'aborted') {
+          console.log('Recognition aborted');
         } else {
-          alert('آواز پہچاننے میں مسئلہ ہوا: ' + event.error);
+          console.warn('Recognition problem:', event.error);
         }
       };
 
       recognition.onend = () => {
+        console.log('Speech recognition session ended');
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognition.start();
@@ -323,7 +348,7 @@ export default function App() {
           }
         ],
         config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+          systemInstruction: "صرف اردو میں بہت مختصر، سادہ اور فوری جواب دیں۔ آپ 'صحت مند گھر' کے مشیر ہیں۔"
         }
       });
       
@@ -472,7 +497,8 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.4.0 (UX & Scroll Fix)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.5.0 (UX & Scroll Optimized)</p>
+
               </div>
             </motion.div>
           </>
@@ -482,16 +508,16 @@ export default function App() {
       {/* Main Content Area */}
       <div className={cn(
         "flex-1 flex flex-col min-h-0 relative",
-        activeTab === 'chat' ? "overflow-hidden" : "overflow-y-auto"
+        activeTab === 'topics' && !activeTopicId ? "overflow-y-auto" : "overflow-hidden"
       )}>
         {/* Persistent Header - Becomes compact on detail views */}
         <header className={cn(
-          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0",
-          (activeTopicId || activeTab === 'chat') ? "p-4 md:p-6" : "p-10 md:p-16 text-center"
+          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-700 shrink-0",
+          (activeTopicId || activeTab === 'chat') ? "py-4 px-6" : "p-10 md:p-16 text-center"
         )}>
           <button 
             onClick={() => setIsMenuOpen(true)}
-            className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md z-20 transition-all active:scale-90"
+            className="absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md z-20 transition-all active:scale-90"
           >
             <Menu className="w-5 h-5 md:w-6 md:h-6" />
           </button>
@@ -502,19 +528,18 @@ export default function App() {
           </div>
 
           <div className={cn(
-            "max-w-4xl mx-auto relative z-10 flex flex-col items-center gap-6",
-            activeTopicId && "flex-row items-center justify-start gap-4"
+            "max-w-4xl mx-auto relative z-10 flex flex-col items-center gap-6 transition-all",
+            (activeTopicId || activeTab === 'chat') && "flex-row items-center justify-start gap-4"
           )}>
             <motion.div 
               layout
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className={cn(
-                "bg-white rounded-[40px] overflow-hidden shadow-2xl border-4 border-white/20 mb-4",
-                activeTopicId ? "w-20 h-20 p-1" : "w-56 h-56 md:w-80 md:h-80 p-2"
+                "bg-white rounded-[40px] overflow-hidden shadow-2xl border-4 border-white/20 transition-all",
+                (activeTopicId || activeTab === 'chat') ? "w-14 h-14 p-0.5 rounded-2xl" : "w-56 h-56 md:w-80 md:h-80 p-2"
               )}
             >
-              {/* Note: Please ensure your uploaded image is named 'header_family.png' in the public folder */}
               <img 
                 src="/header_family.png" 
                 alt="Family" 
@@ -522,17 +547,18 @@ export default function App() {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = '/assets/images/family_comparison_pakistan.png';
                 }}
-                className="w-full h-full object-cover rounded-[32px]"
+                className="w-full h-full object-cover rounded-[32px] transition-all"
+                style={{ borderRadius: (activeTopicId || activeTab === 'chat') ? '12px' : '32px' }}
                 referrerPolicy="no-referrer"
               />
             </motion.div>
             
-            <div className={cn("space-y-1", (!activeTopicId && activeTab !== 'chat') && "space-y-2")}>
-              <h1 className={cn("font-black tracking-tighter text-white", (activeTopicId || activeTab === 'chat') ? "text-xl md:text-2xl" : "text-4xl md:text-6xl")}>صحت مند گھر</h1>
+            <div className={cn("space-y-1 transition-all", (!activeTopicId && activeTab !== 'chat') && "space-y-2")}>
+              <h1 className={cn("font-black tracking-tighter text-white transition-all", (activeTopicId || activeTab === 'chat') ? "text-xl md:text-2xl" : "text-4xl md:text-6xl")}>صحت مند گھر</h1>
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.4.0 • Scroll & Speed Optimized</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.5.0 • UX Refinement & Scroll Fix</p>
                 </>
               )}
             </div>
@@ -546,26 +572,27 @@ export default function App() {
                   <Volume2 className="w-7 h-7" />
                   ٹیسٹ آواز (مفت) 🔊
                 </button>
-                <span className="text-[10px] text-teal-200 font-sans uppercase font-black tracking-widest mt-2">Test Urdu Voice System</span>
               </div>
             )}
           </div>
         </header>
 
         <main className={cn(
-          "max-w-4xl mx-auto w-full flex-1",
-          activeTab === 'topics' ? "px-4 py-8 pb-40" : "flex flex-col overflow-hidden"
+          "max-w-4xl mx-auto w-full flex-1 relative flex flex-col",
+          activeTab === 'topics' && !activeTopicId ? "px-4 py-10 pb-40" : "overflow-hidden"
         )}>
+
           {activeTab === 'topics' ? (
             <AnimatePresence mode="wait">
               {!activeTopicId ? (
                 <motion.section 
                   key="topic-list"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-10"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-12"
                 >
+
                   <div className="flex flex-col items-center text-center space-y-4">
                     <h3 className="font-black text-4xl text-slate-800 tracking-tight">صحت کے اہم موضوعات</h3>
                     <div className="h-2 w-20 bg-teal-600 rounded-full"></div>
@@ -649,7 +676,7 @@ export default function App() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="bg-white border-4 border-teal-600 rounded-[48px] p-6 md:p-10 shadow-2xl relative overflow-hidden"
+                  className="bg-white border-4 border-teal-600 rounded-[48px] p-6 md:p-10 shadow-2xl relative overflow-y-auto"
                 >
                   <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-100">
                     <button 
@@ -760,11 +787,12 @@ export default function App() {
               )}
             </AnimatePresence>
           ) : (
-            <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white md:bg-transparent overflow-hidden">
+            <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white relative overflow-hidden">
               <div className={cn(
-                "flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pt-10",
-                messages.length === 0 ? "flex flex-col items-center justify-center text-center" : ""
+                "flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth",
+                messages.length === 0 ? "flex flex-col items-center justify-center text-center pb-20" : "pb-32"
               )}>
+
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center space-y-4 animate-in fade-in zoom-in duration-500">
                     <div className="w-24 h-24 bg-indigo-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-3">
@@ -800,9 +828,10 @@ export default function App() {
                         )}
                       >
                         <div className={cn(
-                          "max-w-[85%] p-5 rounded-[28px] text-lg md:text-xl leading-relaxed shadow-lg border-2",
+                          "max-w-[85%] p-4 rounded-3xl text-lg md:text-xl leading-relaxed shadow-sm border",
                           msg.sender === 'user' ? "bg-white border-slate-100" : "bg-indigo-600 text-white border-indigo-500"
                         )}>
+
                           {msg.text.split('\n').map((line, i) => (
                             <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>
                           ))}
@@ -837,12 +866,12 @@ export default function App() {
                 <div ref={messagesEndRef} className="h-4" />
               </div>
 
-              {/* Chat Input Area - Fixed at bottom of section */}
-              <div className="p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 pb-28 md:pb-8">
+              {/* Chat Input Area - Overlayed but nicely integrated */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/95 to-transparent pt-10 z-10">
                 <div className="max-w-4xl mx-auto">
                     <form 
                       onSubmit={handleSendMessage} 
-                      className="flex items-center gap-2 p-2 bg-slate-50 shadow-inner rounded-[32px] border-2 border-slate-100 focus-within:border-indigo-400 focus-within:bg-white transition-all pl-3"
+                      className="flex items-center gap-2 p-2 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.1)] rounded-[32px] border border-slate-100 focus-within:border-indigo-400 transition-all pl-3"
                     >
                       <button
                         type="submit"
@@ -852,7 +881,7 @@ export default function App() {
                           !inputValue.trim() && "opacity-20 scale-90 grayscale"
                         )}
                       >
-                        <Send className="w-6 h-6 -rotate-45" />
+                        <Send className="w-5 h-5 -rotate-45" />
                       </button>
 
                       <input
@@ -860,7 +889,7 @@ export default function App() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="اپنا سوال لکھیں..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-xl font-bold py-3 px-2 text-right dir-rtl outline-none min-w-0"
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-lg md:text-xl font-bold py-3 px-2 text-right dir-rtl outline-none min-w-0"
                       />
 
                       <button
@@ -868,27 +897,28 @@ export default function App() {
                         onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
                         className={cn(
                           "w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0",
-                          isAutoVoiceEnabled ? "bg-teal-100 text-teal-600" : "bg-slate-100 text-slate-400"
+                          isAutoVoiceEnabled ? "bg-teal-50 text-teal-600" : "bg-slate-50 text-slate-400"
                         )}
-                        title={isAutoVoiceEnabled ? "خودکار آواز بند کریں" : "خودکار آواز آن کریں"}
                       >
-                        <Volume2 className={cn("w-6 h-6", isAutoVoiceEnabled && "animate-pulse")} />
+                        <Volume2 className={cn("w-5 h-5", isAutoVoiceEnabled && "animate-pulse")} />
                       </button>
 
                       <button
                         type="button"
                         onClick={startListening}
+                        disabled={isTyping}
                         className={cn(
                           "w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0",
-                          isListening ? "bg-red-500 text-white animate-pulse shadow-red-200 shadow-xl" : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                          isListening ? "bg-red-500 text-white animate-pulse" : 
+                          isTyping ? "bg-slate-50 text-slate-300 cursor-not-allowed" : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                         )}
                       >
-                        {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                        {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                       </button>
                     </form>
                     {isListening && (
                       <div className="mt-2 text-center">
-                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">سن رہا ہوں... (Listening)</p>
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">سن رہا ہوں...</p>
                         {interimTranscript && <p className="text-slate-400 text-sm mt-1">"{interimTranscript}"</p>}
                       </div>
                     )}
@@ -899,97 +929,22 @@ export default function App() {
         </main>
       </div>
 
-      {/* Floating Smart Input Dock (Only in Chat Tab) */}
+
+      {/* Floating Action Button (Ask AI) */}
       <AnimatePresence>
         {activeTab === 'topics' && (
           <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
+            initial={{ scale: 0, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0, opacity: 0, y: 20 }}
             onClick={() => setActiveTab('chat')}
-            className="fixed bottom-24 right-6 w-20 h-20 bg-indigo-600 text-white rounded-full shadow-2xl z-[55] flex flex-col items-center justify-center gap-1 active:scale-90 transition-all border-4 border-white/20 backdrop-blur-sm"
+            className="fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl z-[55] flex flex-col items-center justify-center gap-1 active:scale-90 transition-all border-4 border-white shadow-indigo-200"
           >
             <Bot className="w-8 h-8" />
-            <span className="text-[10px] font-black uppercase">Ask AI</span>
           </motion.button>
         )}
-
-        {activeTab === 'chat' && (
-          <motion.div 
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-24 left-0 right-0 p-4 z-50 pointer-events-auto"
-          >
-            <div className="max-w-4xl mx-auto">
-              <form 
-                onSubmit={handleSendMessage} 
-                className="flex items-center gap-3 p-3 bg-white shadow-2xl rounded-[40px] border-4 border-slate-50 relative group focus-within:border-teal-100 transition-all"
-              >
-                <button
-                  type="button"
-                  onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
-                  className={cn(
-                    "w-14 h-14 flex items-center justify-center rounded-full transition-all shrink-0",
-                    isAutoVoiceEnabled ? "bg-teal-50 text-teal-600" : "bg-slate-50 text-slate-400"
-                  )}
-                  title={isAutoVoiceEnabled ? "خودکار آواز بند کریں" : "خودکار آواز آن کریں"}
-                >
-                  <Volume2 className={cn("w-7 h-7", isAutoVoiceEnabled && "animate-pulse")} />
-                </button>
-                <button
-                  type="button"
-                  onClick={startListening}
-                  className={cn(
-                    "w-14 h-14 flex items-center justify-center rounded-full transition-all focus:outline-none relative",
-                    isListening ? "bg-red-500 text-white shadow-xl shadow-red-500/40" : "text-slate-400 bg-slate-50 hover:bg-teal-50 hover:text-teal-600"
-                  )}
-                >
-                  {isListening && (
-                    <span className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-75" />
-                  )}
-                  {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
-                </button>
-                <div className="flex-1 relative flex items-center">
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => { setInputValue(e.target.value); if (showVoiceConfirm) setShowVoiceConfirm(false); }}
-                    placeholder={isListening ? "سن رہا ہوں..." : "اردو میں کچھ بھی پوچھیں..."}
-                    className={cn(
-                      "flex-1 h-14 outline-none text-xl md:text-2xl font-bold placeholder-slate-300 bg-transparent px-2 min-w-0 transition-opacity",
-                      isListening && !inputValue && "opacity-50"
-                    )}
-                  />
-                  
-                  {interimTranscript && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 font-urdu italic pointer-events-none whitespace-nowrap overflow-hidden max-w-[90%] pr-4 text-xl">
-                      {interimTranscript}...
-                    </span>
-                  )}
-
-                  {inputValue && !isListening && (
-                    <button 
-                      type="button"
-                      onClick={() => { setInputValue(''); setShowVoiceConfirm(false); }}
-                      className="p-3 text-slate-300 hover:text-slate-500 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  disabled={!inputValue.trim() || isTyping || isListening}
-                  className="w-14 h-14 flex items-center justify-center bg-[#0f766e] text-white rounded-full transition-all disabled:opacity-20 shadow-xl shadow-teal-900/10 active:scale-90"
-                >
-                  <Send className="w-7 h-7 -rotate-90" />
-                </button>
-              </form>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
+
 
       {/* Persistent Bottom Nav Tab Bar */}
       <nav className="h-20 bg-white border-t border-slate-100 px-8 flex justify-around items-center z-[60] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
