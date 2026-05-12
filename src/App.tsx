@@ -204,6 +204,19 @@ export default function App() {
     }
 
     try {
+      const isIpAddress = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
+      const isSecure = window.isSecureContext;
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+      if (!isSecure && !isLocal) {
+        if (isIpAddress) {
+          alert('آئی پی ایڈریس (IP Address) پر مائیکروفون کام نہیں کرتا۔ براہ کرم ایپ کا "Shared URL" استعمال کریں جو کہ محفوظ (HTTPS) ہے تاکہ مائیکروفون استعمال کیا جا سکے۔');
+        } else {
+          alert('آئی پی ایڈریس یا غیر محفوظ کنکشن پر مائیکروفون استعمال نہیں کیا جا سکتا۔ براہ کرم محفوظ (HTTPS) لنک کا استعمال کریں۔');
+        }
+        return;
+      }
+      
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
       recognition.lang = 'ur-PK';
@@ -256,11 +269,21 @@ export default function App() {
         setInterimTranscript('');
         
         if (event.error === 'not-allowed') {
-          alert('براہ کرم مائیکروفون کے استعمال کی اجازت دیں۔ آپ کی آواز نہیں سنی جا رہی۔');
+          const isSecure = window.isSecureContext;
+          const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          const isIpAddress = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
+          
+          if (!isSecure && !isLocal) {
+            alert('براہ کرم محفوظ لنک (HTTPS) کا استعمال کریں کیونکہ آئی پی ایڈریس یا غیر محفوظ ویب سائٹ پر مائیکروفون کی اجازت نہیں دی جا سکتی۔');
+          } else {
+            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹینگ میں جا کر مائیکروفون کو "Allow" کریں اور اس پیج کو "Hard Refresh" کریں۔');
+          }
         } else if (event.error === 'no-speech') {
           console.log('No speech detected');
         } else if (event.error === 'aborted') {
           console.log('Recognition aborted');
+        } else if (event.error === 'network') {
+          alert('انٹرنیٹ کا مسئلہ ہے۔ براہ کرم اپنا کنکشن چیک کریں۔');
         } else {
           console.warn('Recognition problem:', event.error);
         }
@@ -440,7 +463,15 @@ export default function App() {
   const currentNode = CHAT_TREE[currentNodeId];
 
   return (
-    <div className="flex flex-col h-screen bg-[#fdfdfd] text-slate-900 font-urdu relative">
+    <div className="fixed inset-0 flex flex-col bg-[#fdfdfd] text-slate-900 font-urdu overflow-hidden select-none">
+      <style dangerouslySetInnerHTML={{ __html: `
+        :root {
+          --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        @supports (-webkit-touch-callout: none) {
+          .h-screen-ios { height: -webkit-fill-available; }
+        }
+      `}} />
       {/* Side Menu Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -497,7 +528,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.5.0 (UX & Scroll Optimized)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.8.0 (Final Mobile Fixes)</p>
 
               </div>
             </motion.div>
@@ -558,7 +589,7 @@ export default function App() {
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.5.0 • UX Refinement & Scroll Fix</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.8.0 • SSL & Layout Optimized</p>
                 </>
               )}
             </div>
@@ -579,7 +610,7 @@ export default function App() {
 
         <main className={cn(
           "max-w-4xl mx-auto w-full flex-1 relative flex flex-col",
-          activeTab === 'topics' && !activeTopicId ? "px-4 py-10 pb-40" : "overflow-hidden"
+          activeTab === 'topics' && !activeTopicId ? "px-4 py-10 pb-52" : "overflow-hidden"
         )}>
 
           {activeTab === 'topics' ? (
@@ -790,7 +821,7 @@ export default function App() {
             <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white relative overflow-hidden">
               <div className={cn(
                 "flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth",
-                messages.length === 0 ? "flex flex-col items-center justify-center text-center pb-20" : "pb-32"
+                messages.length === 0 ? "flex flex-col items-center justify-center text-center pb-32" : "pb-44"
               )}>
 
                 {messages.length === 0 ? (
@@ -938,7 +969,7 @@ export default function App() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 20 }}
             onClick={() => setActiveTab('chat')}
-            className="fixed bottom-24 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl z-[55] flex flex-col items-center justify-center gap-1 active:scale-90 transition-all border-4 border-white shadow-indigo-200"
+            className="fixed bottom-28 right-6 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl z-[55] flex flex-col items-center justify-center gap-1 active:scale-90 transition-all border-4 border-white shadow-indigo-200"
           >
             <Bot className="w-8 h-8" />
           </motion.button>
@@ -947,11 +978,11 @@ export default function App() {
 
 
       {/* Persistent Bottom Nav Tab Bar */}
-      <nav className="h-20 bg-white border-t border-slate-100 px-8 flex justify-around items-center z-[60] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
+      <nav className="h-20 sm:h-24 shrink-0 bg-white border-t border-slate-100 px-4 sm:px-8 pb-2 sm:pb-6 flex justify-around items-center z-[60] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <button 
           onClick={() => setActiveTab('topics')}
           className={cn(
-            "flex flex-col items-center gap-1 group transition-all",
+            "flex flex-col items-center gap-0.5 group transition-all",
             activeTab === 'topics' ? "text-teal-600" : "text-slate-400 opacity-60"
           )}
         >
@@ -959,27 +990,27 @@ export default function App() {
             "p-2 rounded-xl transition-colors",
             activeTab === 'topics' ? "bg-teal-50" : "group-hover:bg-slate-50"
           )}>
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">موضوعات</span>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-none">موضوعات</span>
         </button>
         
         <div className="relative">
           <button 
             onClick={() => setActiveTab('chat')}
             className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center -mt-12 border-8 border-[#fdfdfd] shadow-2xl transition-all active:scale-90",
+              "w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center -mt-10 sm:-mt-16 border-4 sm:border-8 border-[#fdfdfd] shadow-xl transition-all active:scale-90",
               activeTab === 'chat' ? "bg-indigo-600 shadow-indigo-200" : "bg-slate-400 shadow-slate-200"
             )}
           >
-            <Bot className="w-8 h-8 text-white" />
+            <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
           </button>
         </div>
 
         <button 
           onClick={() => setActiveTab('chat')}
           className={cn(
-            "flex flex-col items-center gap-1 group transition-all",
+            "flex flex-col items-center gap-0.5 group transition-all",
             activeTab === 'chat' ? "text-indigo-600" : "text-slate-400 opacity-60"
           )}
         >
@@ -987,9 +1018,9 @@ export default function App() {
             "p-2 rounded-xl transition-colors",
             activeTab === 'chat' ? "bg-indigo-50" : "group-hover:bg-slate-50"
           )}>
-            <MessageCircle className="w-6 h-6" />
+            <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest">چیٹ</span>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest leading-none">چیٹ</span>
         </button>
       </nav>
 
