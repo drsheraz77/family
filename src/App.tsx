@@ -319,9 +319,12 @@ export default function App() {
         contents: [
           {
             role: "user",
-            parts: [{ text: `اردو میں طبی ماہر بن کر اس سوال کا بہت مختصر اور فوری جواب دیں: ${userText}` }]
+            parts: [{ text: `صرف اردو میں بہت مختصر اور فوری جواب دیں: ${userText}` }]
           }
-        ]
+        ],
+        config: {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+        }
       });
       
       const botMessageId = Math.random().toString(36).substr(2, 9);
@@ -412,7 +415,7 @@ export default function App() {
   const currentNode = CHAT_TREE[currentNodeId];
 
   return (
-    <div className="flex flex-col h-screen bg-[#fdfdfd] text-slate-900 font-urdu relative overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#fdfdfd] text-slate-900 font-urdu relative">
       {/* Side Menu Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -469,17 +472,17 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.3.0 (One-Click AI Response)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.4.0 (UX & Scroll Fix)</p>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Main Scrollable Content Area */}
+      {/* Main Content Area */}
       <div className={cn(
         "flex-1 flex flex-col min-h-0 relative",
-        activeTab === 'chat' ? "overflow-hidden" : "overflow-y-auto no-scrollbar"
+        activeTab === 'chat' ? "overflow-hidden" : "overflow-y-auto"
       )}>
         {/* Persistent Header - Becomes compact on detail views */}
         <header className={cn(
@@ -529,7 +532,7 @@ export default function App() {
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.3.0 • One-Click AI Response Integrated</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.4.0 • Scroll & Speed Optimized</p>
                 </>
               )}
             </div>
@@ -550,8 +553,8 @@ export default function App() {
         </header>
 
         <main className={cn(
-          "max-w-4xl mx-auto w-full flex-1 min-h-0",
-          activeTab === 'topics' ? "px-4 py-8 overflow-y-auto no-scrollbar pb-40" : "flex flex-col overflow-hidden"
+          "max-w-4xl mx-auto w-full flex-1",
+          activeTab === 'topics' ? "px-4 py-8 pb-40" : "flex flex-col overflow-hidden"
         )}>
           {activeTab === 'topics' ? (
             <AnimatePresence mode="wait">
