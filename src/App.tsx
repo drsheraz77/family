@@ -121,11 +121,10 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentNodeId, setCurrentNodeId] = useState<string>(INITIAL_NODE);
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [activeTab, setActiveTab] = useState<'topics' | 'chat'>('topics');
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [breadcrumb, setBreadcrumb] = useState<string[]>(['start']);
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -223,15 +222,17 @@ export default function App() {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stream.getTracks().forEach(track => track.stop());
         } catch (err: any) {
-          console.error('Microphone access check failed:', err);
           if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.includes('denied')) {
-            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹنگز (Address Bar کے بائیں جانب تالے کا نشان) میں جا کر مائیکروفون کو "Allow" کریں اور پیج کو دوبارہ لوڈ کریں۔');
+            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹینگ میں جا کر مائیکروفون کو "Allow" کریں اور ریفریش کریں۔');
             return;
           }
-          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || err.message?.includes('not found')) {
-            alert('آپ کے آلے میں مائیکروفون نہیں ملا۔ براہ کرم چیک کریں کہ مائیکروفون درست طریقے سے منسلک ہے یا نہیں، یا کوئی دوسرا آلہ استعمال کریں۔');
+          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || err.message?.includes('not found') || err.message?.includes('device not found')) {
+            alert('آپ کے فون یا کمپیوٹر میں مائیکروفون نہیں ملا۔ براہ کرم چیک کریں کہ مائیکروفون کام کر رہا ہے یا ہیڈ فون استعمال کریں۔');
             return;
           }
+          // Only log unexpected errors
+          console.error('Microphone access unexpected error:', err);
+          return;
         }
       }
       
@@ -282,19 +283,17 @@ export default function App() {
       };
 
       recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
         setIsListening(false);
         setInterimTranscript('');
         
         if (event.error === 'not-allowed') {
           const isSecure = window.isSecureContext;
           const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-          const isIpAddress = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
           
           if (!isSecure && !isLocal) {
-            alert('براہ کرم محفوظ لنک (HTTPS) کا استعمال کریں کیونکہ آئی پی ایڈریس یا غیر محفوظ ویب سائٹ پر مائیکروفون کی اجازت نہیں دی جا سکتی۔');
+            alert('براہ کرم محفوظ لنک (HTTPS) کا استعمال کریں کیونکہ مائیکروفون کی اجازت نہیں دی جا سکتی۔');
           } else {
-            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹنگز میں جا کر مائیکروفون کو "Allow" کریں اور اس پیج کو "Hard Refresh" کریں۔ اگر آپ کروم آئی او ایس (Chrome iOS) استعمال کر رہے ہیں تو مائیکروفون کی اجازت چیک کریں۔');
+            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹینگ میں جا کر مائیکروفون کو "Allow" کریں اور ریفریش کریں۔');
           }
         } else if (event.error === 'no-speech') {
           console.log('No speech detected');
@@ -303,7 +302,7 @@ export default function App() {
         } else if (event.error === 'network') {
           alert('انٹرنیٹ کا مسئلہ ہے۔ براہ کرم اپنا کنکشن چیک کریں۔');
         } else {
-          console.warn('Recognition problem:', event.error);
+          console.error('Speech recognition error:', event.error);
         }
       };
 
@@ -329,14 +328,14 @@ export default function App() {
   }, [messages]);
 
   useEffect(() => {
-    // Initial setup
+    // Initial setup for AI Chat
     setMessages([
       {
-        id: 'welcome',
-        text: CHAT_TREE[INITIAL_NODE].text,
+        id: 'welcome-ai',
+        text: 'اسلام علیکم! میں آپ کا ڈیجیٹل ہیلتھ مشیر ہوں۔ میں بچوں میں وقفہ، صحت اور خاندانی بہبود کے بارے میں آپ کے سوالات کے جواب دے سکتا ہوں۔\n\nآپ مجھ سے ان موضوعات پر پوچھ سکتے ہیں:\n- وقفہ کے مختلف طریقے\n- اسلام میں وقفہ کی اہمیت\n- غلط فہمیاں اور ان کی حقیقت\n- اعظم بستی اور مٹیاری میں سروسز\n\nآپ اپنا سوال لکھیں یا نیچے والا مائیک دبا کر بولیں۔',
         sender: 'bot',
         timestamp: new Date(),
-        type: 'static'
+        type: 'ai'
       }
     ]);
   }, []);
@@ -366,6 +365,11 @@ export default function App() {
     setInputValue('');
     setShowVoiceConfirm(false);
 
+    const botMessageId = Math.random().toString(36).substr(2, 9);
+    
+    // Check if we are coming from a topic for context
+    const currentTopicContext = activeTopicId ? CHAT_TREE[activeTopicId] : null;
+
     setMessages(prev => [
       ...prev,
       {
@@ -380,20 +384,36 @@ export default function App() {
     try {
       const modelName = "gemini-3-flash-preview"; 
       
+      // Extract knowledge base from CHAT_TREE for context
+      const knowledgeBase = Object.values(CHAT_TREE)
+        .map(node => `موضوع: ${node.id}\nمواد: ${node.text}`)
+        .join('\n---\n');
+
       const responseStream = await genAI.models.generateContentStream({
         model: modelName,
         contents: [
           {
             role: "user",
-            parts: [{ text: `صرف اردو میں بہت مختصر اور فوری جواب دیں: ${userText}` }]
+            parts: [{ text: userText }]
           }
         ],
         config: {
-          systemInstruction: "صرف اردو میں بہت مختصر، سادہ اور فوری جواب دیں۔ آپ 'صحت مند گھر' کے مشیر ہیں۔"
+          systemInstruction: `آپ 'صحت مند گھر' (Sehat Mand Ghar) نامی ایک جدید ہیلتھ مشیر ہیں۔ آپ کا ہدف پاکستانی خاندانوں کو بچوں کی پیدائش میں مناسب وقفے، صحت، غذائیت اور خاندانی خوشحالی کے بارے میں اردو میں رہنمائی فراہم کرنا ہے۔
+
+ایپ کا موجودہ ڈیٹا جس پر آپ کا جواب مبنی ہونا چاہیے:
+${knowledgeBase}
+
+${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ رہا ہے: "${currentTopicContext.text}"۔ اگر ان کا سوال اس سے متعلق ہے تو اسے خاص طور پر مدنظر رکھیں۔` : ''}
+
+قوانین:
+1. ہمیشہ 'اردو' میں بات کریں۔
+2. اگر معلومات اوپر دیے گئے ڈیٹا میں موجود ہے، تو اسے ترجیح دیں۔
+3. جواب بہت مختصر، سادہ، دوستانہ اور مددگار ہونا چاہیے (زیادہ تر 2-3 جملے)۔ طبی اصطلاحات کو آسان اردو میں سمجھائیں۔
+4. اگر کوئی ایسا سوال ہو جو ڈیٹا میں نہیں ہے، تو ایک عام ماہرانہ لیکن احتیاطی جواب دیں اور ڈاکٹر سے رجوع کرنے کا مشورہ دیں۔ 
+5. آپ کا لہجہ ایک ہمدرد اور سمجھدار ماہر جیسا ہونا چاہیے۔
+6. ہر جواب کے آخر میں (یا مناسب جگہ پر) یہ واضح کریں کہ حتمی فیصلہ ماہرِ صحت کے مشورے سے ہونا چاہیے۔`
         }
       });
-      
-      const botMessageId = Math.random().toString(36).substr(2, 9);
       
       // Initialize empty bot message for streaming
       setMessages(prev => [
@@ -456,13 +476,12 @@ export default function App() {
 
   const resetChat = () => {
     setMessages([{
-      id: 'welcome',
-      text: CHAT_TREE[INITIAL_NODE].text,
+      id: 'welcome-ai',
+      text: 'اسلام علیکم! میں آپ کا ڈیجیٹل ہیلتھ مشیر ہوں۔ میں بچوں میں وقفہ، صحت اور خاندانی بہبود کے بارے میں آپ کے سوالات کے جواب دے سکتا ہوں۔\n\nآپ اپنا سوال لکھیں یا نیچے والا مائیک دبا کر بولیں۔',
       sender: 'bot',
       timestamp: new Date(),
-      type: 'static'
+      type: 'ai'
     }]);
-    setCurrentNodeId(INITIAL_NODE);
     setActiveTopicId(null);
     setBreadcrumb(['start']);
   };
@@ -477,8 +496,6 @@ export default function App() {
     
     return 'معلومات';
   };
-
-  const currentNode = CHAT_TREE[currentNodeId];
 
   return (
     <div className="fixed inset-0 flex flex-col bg-[#fdfdfd] text-slate-900 font-urdu overflow-hidden select-none">
@@ -546,7 +563,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v6.0.0 (Mic Hardware Fix)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v7.2.0 (Expert Mic Calibration)</p>
 
               </div>
             </motion.div>
@@ -607,7 +624,7 @@ export default function App() {
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v6.0.0 • Hardware & Mic Optimization</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v7.2.0 • Expert Mic Calibration</p>
                 </>
               )}
             </div>
