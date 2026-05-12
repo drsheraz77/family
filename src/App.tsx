@@ -41,24 +41,44 @@ const speakUrdu = (text: string, onStart?: () => void, onEnd?: () => void) => {
   const utterance = new SpeechSynthesisUtterance(processedText);
   utterance.lang = 'ur-PK';
   
-  // Try to find the best Urdu voice
-  const voices = window.speechSynthesis.getVoices();
-  const urVoices = voices.filter(v => v.lang.startsWith('ur'));
+  // Function to set voice
+  const setBestVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const urVoices = voices.filter(v => v.lang.toLowerCase().includes('ur'));
+    
+    // Preference: Google Urdu, then Samsung Urdu, then any ur-PK, then first available ur
+    const bestVoice = urVoices.find(v => v.name.includes('Google')) || 
+                      urVoices.find(v => v.name.includes('Samsung')) || 
+                      urVoices.find(v => v.lang === 'ur-PK') || 
+                      urVoices[0];
+                      
+    if (bestVoice) {
+      utterance.voice = bestVoice;
+    }
+  };
+
+  setBestVoice();
+  // voices can be loaded async
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = setBestVoice;
+  }
   
-  // Preference: Google Urdu (high quality), then any ur-PK, then first available ur
-  const bestVoice = urVoices.find(v => v.name.includes('Google')) || urVoices.find(v => v.lang === 'ur-PK') || urVoices[0];
-  if (bestVoice) utterance.voice = bestVoice;
-  
-  // Adjusted for medical context and clarity
-  utterance.rate = 0.85; 
-  utterance.pitch = 1.05;
+  utterance.rate = 0.9; 
+  utterance.pitch = 1.0;
   utterance.volume = 1.0;
 
-  if (onStart) utterance.onstart = onStart;
-  if (onEnd) {
-    utterance.onend = onEnd;
-    utterance.onerror = onEnd;
-  }
+  utterance.onstart = () => {
+    if (onStart) onStart();
+  };
+
+  utterance.onend = () => {
+    if (onEnd) onEnd();
+  };
+
+  utterance.onerror = (event) => {
+    console.error('Speech error:', event);
+    if (onEnd) onEnd();
+  };
 
   window.speechSynthesis.speak(utterance);
 };
@@ -78,7 +98,7 @@ interface SpeechRecognition extends EventTarget {
 declare var webkitSpeechRecognition: {
   new (): SpeechRecognition;
 };
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { CHAT_TREE, ChatNode } from './constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -116,6 +136,7 @@ export default function App() {
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [isAutoVoiceEnabled, setIsAutoVoiceEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const toggleSpeech = (id: string, text: string) => {
@@ -201,7 +222,8 @@ export default function App() {
         if (finalTranscript) {
           setInputValue(finalTranscript);
           setInterimTranscript('');
-          setShowVoiceConfirm(true);
+          // Automatically send the message when speech is final
+          sendMessage(finalTranscript);
         } else {
           setInterimTranscript(interim);
         }
@@ -272,11 +294,9 @@ export default function App() {
     }, 2000);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  const sendMessage = async (userText: string) => {
+    if (!userText.trim() || isTyping) return;
 
-    const userText = inputValue.trim();
     setInputValue('');
     setShowVoiceConfirm(false);
 
@@ -293,19 +313,57 @@ export default function App() {
     setIsTyping(true);
     try {
       const modelName = "gemini-3-flash-preview"; 
-      const prompt = `
-        آپ بچوں میں وقفہ (Child Spacing) کے ماہر ہیں۔ 
-        پاکستان کے مخصوص سماجی اور طبی تناظر میں مختصر اور جامع جواب اردو میں دیں۔ 
-        صارف کا سوال: ${userText}
-      `;
-
-      const response = await genAI.models.generateContent({
+      
+      const responseStream = await genAI.models.generateContentStream({
         model: modelName,
-        contents: prompt
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `اردو میں طبی ماہر بن کر اس سوال کا بہت مختصر اور فوری جواب دیں: ${userText}` }]
+          }
+        ]
       });
       
-      const text = response.text || 'معذرت، میں ابھی جواب نہیں دے پا رہا۔';
-      addBotMessage(text, 'ai');
+      const botMessageId = Math.random().toString(36).substr(2, 9);
+      
+      // Initialize empty bot message for streaming
+      setMessages(prev => [
+        ...prev,
+        {
+          id: botMessageId,
+          text: '',
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'ai'
+        }
+      ]);
+
+      let fullText = '';
+      for await (const chunk of responseStream) {
+        const chunkText = chunk.text;
+        if (chunkText) {
+          fullText += chunkText;
+          // Update the message text incrementally
+          setMessages(prev => prev.map(msg => 
+            msg.id === botMessageId ? { ...msg, text: fullText } : msg
+          ));
+        }
+      }
+
+      // Auto-speak when streaming completes
+      if (fullText && isAutoVoiceEnabled) {
+        speakUrdu(
+          fullText,
+          () => setSpeakingMessageId(botMessageId),
+          () => setSpeakingMessageId(null)
+        );
+      }
+      
+      if (!fullText) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === botMessageId ? { ...msg, text: 'معذرت، میں ابھی جواب نہیں دے پا رہا۔' } : msg
+        ));
+      }
     } catch (error) {
       console.error('AI Error:', error);
       let errorMessage = 'معذرت، ابھی میں جواب نہیں دے پا رہا۔ براہ کرم تھوڑی دیر بعد کوشش کریں۔';
@@ -320,6 +378,11 @@ export default function App() {
     } finally {
       setIsTyping(false);
     }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(inputValue);
   };
 
   const resetChat = () => {
@@ -349,7 +412,7 @@ export default function App() {
   const currentNode = CHAT_TREE[currentNodeId];
 
   return (
-    <div className="flex flex-col h-full bg-[#fdfdfd] text-slate-900 font-urdu relative overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#fdfdfd] text-slate-900 font-urdu relative overflow-hidden">
       {/* Side Menu Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
@@ -406,7 +469,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v4.7.0 (Navigation Update)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.3.0 (One-Click AI Response)</p>
               </div>
             </motion.div>
           </>
@@ -414,11 +477,14 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
+      <div className={cn(
+        "flex-1 flex flex-col min-h-0 relative",
+        activeTab === 'chat' ? "overflow-hidden" : "overflow-y-auto no-scrollbar"
+      )}>
         {/* Persistent Header - Becomes compact on detail views */}
         <header className={cn(
-          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-500",
-          activeTopicId ? "p-4 md:p-6" : "p-10 md:p-16 text-center"
+          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0",
+          (activeTopicId || activeTab === 'chat') ? "p-4 md:p-6" : "p-10 md:p-16 text-center"
         )}>
           <button 
             onClick={() => setIsMenuOpen(true)}
@@ -441,24 +507,34 @@ export default function App() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className={cn(
-                "bg-white/10 p-3 rounded-2xl backdrop-blur-md border border-white/20 shadow-2xl",
-                !activeTopicId && "p-5 rounded-[40px]"
+                "bg-white rounded-[40px] overflow-hidden shadow-2xl border-4 border-white/20 mb-4",
+                activeTopicId ? "w-20 h-20 p-1" : "w-56 h-56 md:w-80 md:h-80 p-2"
               )}
             >
-              <Heart className={cn("text-white fill-white/80", activeTopicId ? "w-6 h-6" : "w-12 h-12")} />
+              {/* Note: Please ensure your uploaded image is named 'header_family.png' in the public folder */}
+              <img 
+                src="/header_family.png" 
+                alt="Family" 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/assets/images/family_comparison_pakistan.png';
+                }}
+                className="w-full h-full object-cover rounded-[32px]"
+                referrerPolicy="no-referrer"
+              />
             </motion.div>
             
-            <div className={cn("space-y-1", !activeTopicId && "space-y-2")}>
-              <h1 className={cn("font-black tracking-tighter text-white", activeTopicId ? "text-xl md:text-2xl" : "text-4xl md:text-6xl")}>صحت مند گھر</h1>
-              {!activeTopicId && (
+            <div className={cn("space-y-1", (!activeTopicId && activeTab !== 'chat') && "space-y-2")}>
+              <h1 className={cn("font-black tracking-tighter text-white", (activeTopicId || activeTab === 'chat') ? "text-xl md:text-2xl" : "text-4xl md:text-6xl")}>صحت مند گھر</h1>
+              {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v4.7.0 • Improved Topic Navigation</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.3.0 • One-Click AI Response Integrated</p>
                 </>
               )}
             </div>
 
-            {!activeTopicId && (
+            {(!activeTopicId && activeTab !== 'chat') && (
               <div className="pt-4 flex flex-col items-center gap-2">
                 <button 
                   onClick={testVoice}
@@ -473,7 +549,10 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto w-full px-4 py-8 pb-32">
+        <main className={cn(
+          "max-w-4xl mx-auto w-full flex-1 min-h-0",
+          activeTab === 'topics' ? "px-4 py-8 overflow-y-auto no-scrollbar pb-40" : "flex flex-col overflow-hidden"
+        )}>
           {activeTab === 'topics' ? (
             <AnimatePresence mode="wait">
               {!activeTopicId ? (
@@ -678,27 +757,33 @@ export default function App() {
               )}
             </AnimatePresence>
           ) : (
-            <section id="chat" className="space-y-12 animate-in fade-in duration-500 min-h-[60vh] pb-60">
-              <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-24 h-24 bg-indigo-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-3">
-                  <Bot className="w-12 h-12" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-4xl font-black text-slate-800 italic">سوال پوچھیں (AI Assistant)</h3>
-                  <p className="text-slate-500 text-lg">اپنا سوال لکھیں یا نیچے والے مائیک بٹن سے بولیں</p>
-                </div>
-              </div>
-
-              {/* Chat Container */}
-              <div className="bg-slate-50/50 rounded-[40px] p-4 md:p-8 min-h-[400px] border-2 border-slate-100 relative shadow-inner">
-                <div className="space-y-6 pb-24">
-                  {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-64 text-slate-400 opacity-60">
-                       <MessageCircle className="w-12 h-12 mb-4" />
-                       <p className="font-bold text-center">چیٹ شروع کریں، آپ کی بات خفیہ رہے گی</p>
+            <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white md:bg-transparent overflow-hidden">
+              <div className={cn(
+                "flex-1 overflow-y-auto p-4 md:p-8 space-y-6 pt-10",
+                messages.length === 0 ? "flex flex-col items-center justify-center text-center" : ""
+              )}>
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center space-y-4 animate-in fade-in zoom-in duration-500">
+                    <div className="w-24 h-24 bg-indigo-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-indigo-200 rotate-3">
+                      <Bot className="w-12 h-12" />
                     </div>
-                  )}
-                  
+                    <div className="space-y-4">
+                      <h3 className="text-3xl font-black text-slate-800 italic">سوال پوچھیں (AI Assistant)</h3>
+                      <p className="text-slate-500 text-lg">اپنا سوال لکھیں یا نیچے والے مائیک بٹن سے بولیں</p>
+                      
+                      <button 
+                        onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
+                        className={cn(
+                          "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all",
+                          isAutoVoiceEnabled ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500"
+                        )}
+                      >
+                        <Volume2 className={cn("w-4 h-4", isAutoVoiceEnabled && "animate-pulse")} />
+                        <span>{isAutoVoiceEnabled ? "خودکار آواز آن ہے" : "آواز بند ہے"}</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <AnimatePresence mode="popLayout">
                     {messages.map((msg) => (
                       <motion.div
@@ -712,40 +797,98 @@ export default function App() {
                         )}
                       >
                         <div className={cn(
-                          "max-w-[85%] p-6 rounded-[32px] text-lg md:text-xl leading-relaxed shadow-xl border-2",
-                          msg.sender === 'user' ? "bg-white border-slate-100" : "bg-[#0f766e] text-white border-teal-500"
+                          "max-w-[85%] p-5 rounded-[28px] text-lg md:text-xl leading-relaxed shadow-lg border-2",
+                          msg.sender === 'user' ? "bg-white border-slate-100" : "bg-indigo-600 text-white border-indigo-500"
                         )}>
                           {msg.text.split('\n').map((line, i) => (
-                            <p key={i} className={i > 0 ? "mt-3" : ""}>{line}</p>
+                            <p key={i} className={i > 0 ? "mt-2" : ""}>{line}</p>
                           ))}
                           
                           {msg.sender === 'bot' && (
                             <button 
                               onClick={() => toggleSpeech(msg.id, msg.text)}
                               className={cn(
-                                "mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all",
-                                speakingMessageId === msg.id ? "bg-white text-teal-700" : "bg-teal-700/30 text-white hover:bg-teal-700/50"
+                                "mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all",
+                                speakingMessageId === msg.id ? "bg-white text-indigo-700" : "bg-indigo-700/30 text-white hover:bg-indigo-700/50"
                               )}
                             >
                               <Volume2 className={cn("w-4 h-4", speakingMessageId === msg.id && "animate-pulse")} />
-                              <span className="text-[10px] uppercase font-black">{speakingMessageId === msg.id ? "Playing" : "Listen"}</span>
+                              <span className="text-[10px] uppercase font-black">{speakingMessageId === msg.id ? "Stop" : "Listen"}</span>
                             </button>
                           )}
                         </div>
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                )}
 
-                  {isTyping && (
-                     <div className="flex justify-end pr-4">
-                       <div className="flex gap-1.5 pt-2">
-                         <div className="w-2.5 h-2.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                         <div className="w-2.5 h-2.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                         <div className="w-2.5 h-2.5 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-                       </div>
+                {isTyping && (
+                   <div className="flex justify-end pr-4">
+                     <div className="flex gap-1.5 pt-2">
+                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                      </div>
-                  )}
-                  <div ref={messagesEndRef} />
+                   </div>
+                )}
+                <div ref={messagesEndRef} className="h-4" />
+              </div>
+
+              {/* Chat Input Area - Fixed at bottom of section */}
+              <div className="p-4 bg-white/80 backdrop-blur-md border-t border-slate-100 pb-28 md:pb-8">
+                <div className="max-w-4xl mx-auto">
+                    <form 
+                      onSubmit={handleSendMessage} 
+                      className="flex items-center gap-2 p-2 bg-slate-50 shadow-inner rounded-[32px] border-2 border-slate-100 focus-within:border-indigo-400 focus-within:bg-white transition-all pl-3"
+                    >
+                      <button
+                        type="submit"
+                        disabled={!inputValue.trim()}
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center transition-all bg-indigo-600 text-white shadow-lg active:scale-90 shrink-0",
+                          !inputValue.trim() && "opacity-20 scale-90 grayscale"
+                        )}
+                      >
+                        <Send className="w-6 h-6 -rotate-45" />
+                      </button>
+
+                      <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        placeholder="اپنا سوال لکھیں..."
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-xl font-bold py-3 px-2 text-right dir-rtl outline-none min-w-0"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0",
+                          isAutoVoiceEnabled ? "bg-teal-100 text-teal-600" : "bg-slate-100 text-slate-400"
+                        )}
+                        title={isAutoVoiceEnabled ? "خودکار آواز بند کریں" : "خودکار آواز آن کریں"}
+                      >
+                        <Volume2 className={cn("w-6 h-6", isAutoVoiceEnabled && "animate-pulse")} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={startListening}
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center transition-all shrink-0",
+                          isListening ? "bg-red-500 text-white animate-pulse shadow-red-200 shadow-xl" : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                        )}
+                      >
+                        {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                      </button>
+                    </form>
+                    {isListening && (
+                      <div className="mt-2 text-center">
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">سن رہا ہوں... (Listening)</p>
+                        {interimTranscript && <p className="text-slate-400 text-sm mt-1">"{interimTranscript}"</p>}
+                      </div>
+                    )}
                 </div>
               </div>
             </section>
@@ -776,27 +919,21 @@ export default function App() {
             className="fixed bottom-24 left-0 right-0 p-4 z-50 pointer-events-auto"
           >
             <div className="max-w-4xl mx-auto">
-              <AnimatePresence>
-                {showVoiceConfirm && inputValue && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="mb-4 p-4 bg-teal-50 border-2 border-teal-200 rounded-[30px] flex items-center justify-between gap-4 shadow-2xl backdrop-blur-xl"
-                  >
-                    <span className="text-sm font-bold text-teal-800 pr-2">کیا آپ یہی کہنا چاہتے ہیں؟</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => { setInputValue(''); setShowVoiceConfirm(false); startListening(); }} className="px-5 py-2.5 bg-white text-teal-700 text-xs font-black rounded-2xl border border-teal-100 shadow-sm">دوبارہ بولیں</button>
-                      <button onClick={() => setShowVoiceConfirm(false)} className="px-5 py-2.5 bg-teal-600 text-white text-xs font-black rounded-2xl shadow-xl shadow-teal-600/30">ٹھیک ہے</button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               <form 
                 onSubmit={handleSendMessage} 
                 className="flex items-center gap-3 p-3 bg-white shadow-2xl rounded-[40px] border-4 border-slate-50 relative group focus-within:border-teal-100 transition-all"
               >
+                <button
+                  type="button"
+                  onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
+                  className={cn(
+                    "w-14 h-14 flex items-center justify-center rounded-full transition-all shrink-0",
+                    isAutoVoiceEnabled ? "bg-teal-50 text-teal-600" : "bg-slate-50 text-slate-400"
+                  )}
+                  title={isAutoVoiceEnabled ? "خودکار آواز بند کریں" : "خودکار آواز آن کریں"}
+                >
+                  <Volume2 className={cn("w-7 h-7", isAutoVoiceEnabled && "animate-pulse")} />
+                </button>
                 <button
                   type="button"
                   onClick={startListening}
