@@ -187,7 +187,7 @@ export default function App() {
       toggleSpeech(nodeId, node.text);
     }
   };
-  const startListening = () => {
+  const startListening = async () => {
     if (isListening) {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -215,6 +215,24 @@ export default function App() {
           alert('آئی پی ایڈریس یا غیر محفوظ کنکشن پر مائیکروفون استعمال نہیں کیا جا سکتا۔ براہ کرم محفوظ (HTTPS) لنک کا استعمال کریں۔');
         }
         return;
+      }
+
+      // Explicitly check/prime microphone permission using getUserMedia
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+        } catch (err: any) {
+          console.error('Microphone access check failed:', err);
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.message?.includes('denied')) {
+            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹنگز (Address Bar کے بائیں جانب تالے کا نشان) میں جا کر مائیکروفون کو "Allow" کریں اور پیج کو دوبارہ لوڈ کریں۔');
+            return;
+          }
+          if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError' || err.message?.includes('not found')) {
+            alert('آپ کے آلے میں مائیکروفون نہیں ملا۔ براہ کرم چیک کریں کہ مائیکروفون درست طریقے سے منسلک ہے یا نہیں، یا کوئی دوسرا آلہ استعمال کریں۔');
+            return;
+          }
+        }
       }
       
       const recognition = new SpeechRecognition();
@@ -276,7 +294,7 @@ export default function App() {
           if (!isSecure && !isLocal) {
             alert('براہ کرم محفوظ لنک (HTTPS) کا استعمال کریں کیونکہ آئی پی ایڈریس یا غیر محفوظ ویب سائٹ پر مائیکروفون کی اجازت نہیں دی جا سکتی۔');
           } else {
-            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹینگ میں جا کر مائیکروفون کو "Allow" کریں اور اس پیج کو "Hard Refresh" کریں۔');
+            alert('مائیکروفون تک رسائی بلاک ہے۔ براہ کرم براؤزر کی سیٹنگز میں جا کر مائیکروفون کو "Allow" کریں اور اس پیج کو "Hard Refresh" کریں۔ اگر آپ کروم آئی او ایس (Chrome iOS) استعمال کر رہے ہیں تو مائیکروفون کی اجازت چیک کریں۔');
           }
         } else if (event.error === 'no-speech') {
           console.log('No speech detected');
@@ -528,7 +546,7 @@ export default function App() {
               </nav>
 
               <div className="text-center pt-8 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v5.8.0 (Final Mobile Fixes)</p>
+                <p className="text-[10px] text-slate-400 font-sans font-black uppercase tracking-widest">Sehat Mand Ghar v6.0.0 (Mic Hardware Fix)</p>
 
               </div>
             </motion.div>
@@ -589,7 +607,7 @@ export default function App() {
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
-                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v5.8.0 • SSL & Layout Optimized</p>
+                  <p className="text-[10px] text-indigo-200/50 font-sans mt-2 bg-white/10 inline-block px-3 py-1 rounded-full border border-white/20">Build v6.0.0 • Hardware & Mic Optimization</p>
                 </>
               )}
             </div>

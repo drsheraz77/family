@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="-1" />
     <meta http-equiv="Surrogate-Control" content="content='no-store'" />
-    <title>صحت مند گھر v5.8.0 (Mobile Optimized)</title>
+    <title>صحت مند گھر v6.0.0 (Mic Hardware Fixed)</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#4f46e5" />
     <script>
@@ -17,15 +17,16 @@
         });
       }
       // Hard refresh for major UX update
-      const currentVersion = '5.8.0';
+      const currentVersion = '6.0.0';
       if (localStorage.getItem('app-version') !== currentVersion) {
         localStorage.clear();
         localStorage.setItem('app-version', currentVersion);
+        window.location.reload();
       }
     </script>
   </head>
   <body>
-    <div id="root" data-version="5.8.0"></div>
+    <div id="root" data-version="6.0.0"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
