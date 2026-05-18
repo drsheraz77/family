@@ -1090,10 +1090,15 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
         activeTab === 'topics' && !activeTopicId ? "overflow-y-auto app-scroll" : "overflow-hidden"
       )}>
         {/* Persistent Header - Becomes compact on detail views */}
-        <header className={cn(
-          "bg-[#1a103d] text-white shadow-2xl relative overflow-hidden transition-all duration-700 shrink-0",
-          (activeTopicId || activeTab === 'chat') ? "py-3 px-4 sm:py-4 sm:px-6" : "px-4 py-7 sm:p-10 md:p-14 lg:p-16 text-center"
-        )}>
+        <header
+          className={cn(
+          "text-white shadow-2xl relative overflow-hidden transition-all duration-700 shrink-0 bg-[#1a103d] bg-cover bg-center",
+          (activeTopicId || activeTab === 'chat') ? "py-3 px-4 sm:py-4 sm:px-6" : "px-4 py-10 sm:p-10 md:p-14 lg:p-16 text-center min-h-[420px] sm:min-h-[560px] flex items-center justify-center"
+          )}
+          style={(!activeTopicId && activeTab !== 'chat') ? {
+            backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.24), rgba(15, 23, 42, 0.46)), url('/assets/images/family_comparison_pakistan.png')"
+          } : undefined}
+        >
           <button 
             onClick={() => setIsMenuOpen(true)}
             className="absolute top-4 right-4 md:top-6 md:right-6 p-3 bg-white/10 hover:bg-white/20 rounded-xl backdrop-blur-md z-20 transition-all active:scale-90"
@@ -1101,14 +1106,17 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
             <Menu className="w-5 h-5 md:w-6 md:h-6" />
           </button>
           
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className={cn(
+            "absolute inset-0 opacity-10 pointer-events-none",
+            (!activeTopicId && activeTab !== 'chat') && "hidden"
+          )}>
             <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-white rounded-full blur-3xl" />
             <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-indigo-500 rounded-full blur-3xl" />
           </div>
 
           <div className={cn(
             "max-w-4xl mx-auto relative z-10 flex flex-col items-center gap-6 transition-all",
-            (activeTopicId || activeTab === 'chat') && "flex-row items-center justify-start gap-4"
+            (activeTopicId || activeTab === 'chat') && "flex-row items-center justify-start gap-3 sm:gap-4 pr-16 sm:pr-0 min-w-0"
           )}>
             <motion.div 
               layout
@@ -1116,11 +1124,11 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
               animate={{ scale: 1, opacity: 1 }}
               className={cn(
                 "bg-white rounded-[28px] sm:rounded-[40px] overflow-hidden shadow-2xl border-4 border-white/20 transition-all shrink-0",
-                (activeTopicId || activeTab === 'chat') ? "w-12 h-12 sm:w-14 sm:h-14 p-0.5 rounded-2xl" : "w-36 h-36 sm:w-52 sm:h-52 md:w-72 md:h-72 lg:w-80 lg:h-80 p-1.5 sm:p-2"
+                (activeTopicId || activeTab === 'chat') ? "w-12 h-12 sm:w-14 sm:h-14 p-0.5 rounded-2xl" : "hidden"
               )}
             >
               <img 
-                src="/header_family.png" 
+                src="/assets/images/family_comparison_pakistan.png" 
                 alt="Family" 
                 onError={(e) => {
                   e.currentTarget.onerror = null;
@@ -1132,8 +1140,8 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
               />
             </motion.div>
             
-            <div className={cn("space-y-1 transition-all", (!activeTopicId && activeTab !== 'chat') && "space-y-2")}>
-              <h1 className={cn("font-black text-white transition-all", (activeTopicId || activeTab === 'chat') ? "text-lg sm:text-xl md:text-2xl" : "text-3xl sm:text-4xl md:text-6xl")}>صحت مند گھر</h1>
+            <div className={cn("space-y-1 transition-all min-w-0", (!activeTopicId && activeTab !== 'chat') && "space-y-8")}>
+              <h1 className={cn("font-black text-white transition-all", (activeTopicId || activeTab === 'chat') ? "text-lg sm:text-xl md:text-2xl whitespace-nowrap truncate" : "text-3xl sm:text-4xl md:text-6xl")}>صحت مند گھر</h1>
               {(!activeTopicId && activeTab !== 'chat') && (
                 <>
                   <p className="text-indigo-100 text-base sm:text-xl md:text-2xl font-medium opacity-90">آپ کا خاندان – آپ کا فیصلہ</p>
@@ -1143,7 +1151,14 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
             </div>
 
             {(!activeTopicId && activeTab !== 'chat') && (
-              <div className="pt-4 flex flex-col items-center gap-2">
+              <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className="group relative inline-flex items-center gap-3 px-6 sm:px-10 py-4 sm:py-5 bg-indigo-500 text-white rounded-2xl sm:rounded-[24px] font-bold text-lg sm:text-xl md:text-2xl shadow-2xl hover:bg-indigo-400 transition-all active:scale-95"
+                >
+                  <MessageSquare className="w-7 h-7" />
+                  ابھی چیٹ کریں
+                </button>
                 <button 
                   onClick={testVoice}
                   disabled={!isSpeechSupported}
@@ -1175,7 +1190,7 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
 
                   <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
                     <h3 className="font-black text-2xl sm:text-3xl md:text-4xl text-slate-800">صحت کے اہم موضوعات</h3>
-                    <div className="h-2 w-20 bg-teal-600 rounded-full"></div>
+                    <div className="h-2 w-20 bg-teal-600 rounded-full mt-2 sm:mt-7"></div>
                     <p className="text-slate-500 text-base sm:text-lg md:text-xl font-medium leading-relaxed">نیچے دیے گئے کسی بھی کارڈ پر کلک کر کے معلومات حاصل کریں</p>
                   </div>
                   
@@ -1374,9 +1389,9 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
               )}
             </AnimatePresence>
           ) : (
-            <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white relative overflow-hidden rounded-t-3xl sm:rounded-none">
+            <section id="chat" className="flex flex-col flex-1 min-h-0 bg-white relative overflow-hidden rounded-3xl sm:rounded-[32px] border border-slate-200 shadow-xl shadow-slate-200/70">
               <div className={cn(
-                "flex-1 overflow-y-auto chat-scroll p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 scroll-smooth",
+                "flex-1 overflow-y-auto chat-scroll p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 scroll-smooth bg-slate-50/70",
                 messages.length === 0 ? "flex flex-col items-center justify-center text-center" : "pb-4 sm:pb-6"
               )}>
 
@@ -1429,10 +1444,10 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
                               onClick={() => toggleSpeech(msg.id, msg.text)}
                               disabled={!isSpeechSupported || !msg.text}
                               className={cn(
-                                "mt-3 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed",
-                                speakingMessageId === msg.id ? "bg-white text-indigo-700" :
-                                pendingSpeechId === msg.id ? "bg-white/80 text-indigo-700 animate-pulse" :
-                                "bg-indigo-700/30 text-white hover:bg-indigo-700/50"
+                                "mt-3 flex items-center gap-2 px-3.5 py-2 rounded-full border transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                                speakingMessageId === msg.id ? "bg-white text-indigo-800 border-white shadow-md" :
+                                pendingSpeechId === msg.id ? "bg-amber-100 text-amber-900 border-amber-200 shadow-md animate-pulse" :
+                                "bg-white/95 text-indigo-800 border-white/80 hover:bg-white"
                               )}
                             >
                               <Volume2 className={cn("w-4 h-4", (speakingMessageId === msg.id || pendingSpeechId === msg.id) && "animate-pulse")} />
@@ -1449,10 +1464,10 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
 
                 {isTyping && (
                    <div className="flex justify-end pr-4">
-                     <div className="flex gap-1.5 pt-2">
-                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                       <div className="w-2.5 h-2.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                     <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl shadow-sm">
+                       <div className="w-3 h-3 bg-indigo-700 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                       <div className="w-3 h-3 bg-indigo-700 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                       <div className="w-3 h-3 bg-indigo-700 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
                      </div>
                    </div>
                 )}
@@ -1491,18 +1506,6 @@ ${currentTopicContext ? `صارف فی الحال اس موضوع کو پڑھ ر
                         placeholder="اپنا سوال لکھیں..."
                         className="flex-1 min-h-10 sm:min-h-12 max-h-28 resize-none overflow-y-auto bg-transparent border-none focus:ring-0 text-base sm:text-lg md:text-xl font-bold leading-loose py-1.5 sm:py-2 px-2 text-right dir-rtl outline-none min-w-0"
                       />
-
-                      <button
-                        type="button"
-                        onClick={() => setIsAutoVoiceEnabled(!isAutoVoiceEnabled)}
-                        disabled={!isSpeechSupported}
-                        className={cn(
-                          "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed",
-                          isAutoVoiceEnabled ? "bg-teal-50 text-teal-600" : "bg-slate-50 text-slate-400"
-                        )}
-                      >
-                        <Volume2 className={cn("w-5 h-5", isAutoVoiceEnabled && "animate-pulse")} />
-                      </button>
 
                       <button
                         type="button"
